@@ -1,4 +1,9 @@
+#ifndef DEBUG
+//  #define DEBUG
+#endif
+
 #include "Recieve.h"
+
 uint8_t bufferLoRa[25];
 uint8_t sizeBuffer = 0;
 byte poisition_header  = 0;
@@ -19,10 +24,14 @@ void readBufferLoRa(uint8_t bufferLoRa[]){
   sizeBuffer = 0;
   while (LoRa.available()) {
     bufferLoRa[sizeBuffer] = char(LoRa.read());
+#ifdef DEBUG
     Serial.print(char(bufferLoRa[sizeBuffer]));
+#endif
     sizeBuffer++;
   }
+#ifdef DEBUG
   Serial.println();
+#endif
 }
 /*********************************************/
 uint8_t haveDataLoRa(){
@@ -51,8 +60,10 @@ byte checkFrame(uint8_t buffer_Frame[]){
   if(check != 2){
     return 2;
   }
+#ifdef DEBUG
   Serial.print("poisition_header: ");
   Serial.println(poisition_header);
+#endif
   /* Kiểm tra có ký tự cuối ko */
   for(uint8_t i = poisition_header; i < Size; i++){
     if(buffer_Frame[i] == SYMBOL_END){
@@ -63,8 +74,10 @@ byte checkFrame(uint8_t buffer_Frame[]){
   if(check != 3){
     return 3;
   }
+#ifdef DEBUG
   Serial.print("poisition_end: ");
   Serial.println(poisition_end);
+#endif
   /* Number Node*/
   uint8_t numberNode = buffer_Frame[poisition_header + 4];
 //  Serial.println(numberNode);
@@ -89,7 +102,7 @@ byte checkFrame(uint8_t buffer_Frame[]){
       command = IMPORMATION;
       break;
     case 'S':
-      command = STATE;
+      command = SET_STATE;
       break;
     case 'T':
       command = TEMPERATURE;
@@ -100,8 +113,14 @@ byte checkFrame(uint8_t buffer_Frame[]){
     case 'H':
       command = HUMIDITY;
       break;
-    case 'D':
+    case 'G':
+        command = GET_STATE;
       break;
+
+    case 'O':
+        command = _OK;
+      break;
+      
     default:
       command = 0;
 //      Serial.println("Lenh ko dung!");
@@ -122,21 +141,21 @@ void recieveTypeCommand(uint8_t bufferLoRa[]){
 
 
 
-/----------------------------------------------
+//----------------------------------------------
 
-void readDataLoRa(uint8_t command){
-  switch(command){
-    case GET_POWER_LORA:
-      break;
-
-    case GET_POWER_LORA:
-      break;
-
-    case GET_POWER_LORA:
-      break;
-    
-  }
-}
+//void readDataLoRa(uint8_t command){
+//  switch(command){
+//    case GET_POWER_LORA:
+//      break;
+//
+//    case GET_POWER_LORA:
+//      break;
+//
+//    case GET_POWER_LORA:
+//      break;
+//    
+//  }
+//}
 //////////////////////////////////////////////////////////
 //void determilPoisition(){
 //  positionHeader();

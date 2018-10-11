@@ -54,11 +54,13 @@
 #define   ACCEPT                        2
 #define   CONFIGURE                     3
 #define   IMPORMATION                   4
-#define   STATE                         5
-#define   TEMPERATURE                   6
-#define   LIGHT                         7
-#define   HUMIDITY                      8
-#define   DATA                          9
+#define   GET_STATE                     5
+#define   SET_STATE                     6
+#define   TEMPERATURE                   7
+#define   LIGHT                         8
+#define   HUMIDITY                      9
+#define   DATA                          10
+#define   _OK                           11
 
 
 /*=============================================================================

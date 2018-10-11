@@ -5,14 +5,38 @@
 
 #define LENGHT_BUFFER_SERIAL      64
 #define LINEFEED                  10
+#define QUESTMARK                 63
+#define COMMA                     44
 
-#define ERROR_LINE_FEED           
-#define ERROR_AT
-#define ERROR_PLUS
-#define ERROR_TYPE_DEVICE
+#define ERROR_LINE_FEED           1
+#define ERROR_AT                  2
+#define ERROR_PLUS                  3
+#define ERROR_TYPE_DEVICE             4
+#define ERROR_PARAM             4
 
+#define TIME_OUT                   18
+
+#define WORKING                   10
 #define GET_COMMAND               1
 #define SET_COMMAND               0
+
+#define GET_VER                   18
+#define SET_RST                   18
+#define GET_POWER_LORA            1
+#define GET_DATA_ENVIRONMENT      2
+#define SET_DATA_ENVIRONMENT      11
+#define GET_STATE_ROLE            12
+#define SET_STATE_ROLE            13
+#define GET_PARAMETER_NETWORK     14
+#define SET_PARAMETER_NETWORK     15
+#define GET_PARAMETER_SYSTEM      16
+#define SET_PARAMETER_SYSTEM      17
+
+#define GET_LIGHT                   18
+#define GET_TEMP                   18
+#define GET_HUM                   18
+#define GET_GND                   18
+#define GET_BAT                   18
 
 /*** Biến hàm ngắt ISR ***/
 volatile uint8_t flagISR = 0;
@@ -20,6 +44,7 @@ volatile uint8_t flag_timeOut = 0;
 volatile uint8_t countISR = 0;
 
 /*** Biến vị trí dấu câu ***/
+uint8_t buf[25];
 //--------------------------------------------------------
 
 uint8_t readBufferSerial(){
@@ -63,7 +88,7 @@ uint8_t sizeofBuf(){
     }
   }
 
-  return size
+  return size;
 }
 
 
@@ -104,7 +129,7 @@ uint8_t determineCommandSerial(){
   for(uint8_t i = 0; i< pos_lineFeed; i++){
     if((buf[i] == 'A') && (buf[i+1] == 'T')){
       pos_A = i;
-      for(uint8_t j = pos_T; j< pos_lineFeed; j++){
+      for(uint8_t j = pos_A; j< pos_lineFeed; j++){
         if(buf[j] == 'T'){
           pos_AT = j;
         }
@@ -132,6 +157,7 @@ uint8_t determineCommandSerial(){
 
 
   //--- Determine '+'
+  uint8_t pos_plus = 0;
   for(uint8_t i = pos_AT; i< pos_lineFeed; i++){
     if(buf[i] == '+'){
       pos_plus = i;
@@ -162,6 +188,7 @@ uint8_t determineCommandSerial(){
 
 
   //--- Determine '='
+  uint8_t pos_equal = 0;
   for(uint8_t i = (pos_plus +1) ; i< pos_lineFeed; i++){
     if(buf[i] == '='){
       pos_equal = i;
@@ -172,6 +199,7 @@ uint8_t determineCommandSerial(){
 
   
   //--- Determine '?'
+  uint8_t pos_questMark = 0;
   for(uint8_t i = pos_equal ; i< pos_lineFeed; i++){
     if(buf[i] == '?'){
       pos_questMark = i;
@@ -246,7 +274,7 @@ uint8_t determineCommandSerial(){
       
     case 'R':
         return SET_RST;
-      break
+      break;
       
     default:
       break;
@@ -350,7 +378,7 @@ uint8_t getStateRole(uint8_t plus, uint8_t equal, uint8_t questMark){
 
   //--- Type Role
   if(command == "CROLE"){
-    getStateRole(equal, questMark);
+    getState(equal, questMark);
   }
   
   if(command == "CBAT"){
@@ -410,7 +438,7 @@ uint8_t setStateRole(uint8_t plus, uint8_t equal, uint8_t lineFeed){
 
 //--------------------------------------------------------
 
-void readAddress(uint8_t equal, uint8_t lineFeed){
+uint8_t readAddress(uint8_t equal, uint8_t lineFeed){
 
   //--- determine comma
   uint8_t comma = lineFeed;
@@ -442,12 +470,12 @@ void readAddress(uint8_t equal, uint8_t lineFeed){
 
 //--------------------------------------------------------
 
-void getLight(uint8_t equal, uint8_t questMark){
+uint8_t getLight(uint8_t equal, uint8_t questMark){
 
   //--- read address
   uint8_t address = 0;
-  for(uint8_t i = equal; i< lineFeed; i++){
-    address = readAddr(equal, questMark);
+  for(uint8_t i = equal; i< questMark; i++){
+    address = readAddress(equal, questMark);
   }
 
 
@@ -464,12 +492,12 @@ void getLight(uint8_t equal, uint8_t questMark){
 
 //--------------------------------------------------------
 
-void getTemperature(uint8_t equal, uint8_t questMark){
+uint8_t getTemperature(uint8_t equal, uint8_t questMark){
 
   //--- read address
   uint8_t address = 0;
-  for(uint8_t i = equal; i< lineFeed; i++){
-    address = readAddr(equal, questMark);
+  for(uint8_t i = equal; i< questMark; i++){
+    address = readAddress(equal, questMark);
   }
 
 
@@ -487,12 +515,12 @@ void getTemperature(uint8_t equal, uint8_t questMark){
 
 //--------------------------------------------------------
 
-void getHumidity(uint8_t equal, uint8_t questMark){
+uint8_t getHumidity(uint8_t equal, uint8_t questMark){
 
   //--- read address
   uint8_t address = 0;
-  for(uint8_t i = equal; i< lineFeed; i++){
-    address = readAddr(equal, questMark);
+  for(uint8_t i = equal; i< questMark; i++){
+    address = readAddress(equal, questMark);
   }
 
 
@@ -511,12 +539,12 @@ void getHumidity(uint8_t equal, uint8_t questMark){
 
 //--------------------------------------------------------
 
-void getGroundHumidity(uint8_t equal, uint8_t questMark){
+uint8_t getGroundHumidity(uint8_t equal, uint8_t questMark){
 
   //--- read address
   uint8_t address = 0;
-  for(uint8_t i = equal; i< lineFeed; i++){
-    address = readAddr(equal, questMark);
+  for(uint8_t i = equal; i< questMark; i++){
+    address = readAddress(equal, questMark);
   }
 
 
@@ -537,12 +565,12 @@ void getGroundHumidity(uint8_t equal, uint8_t questMark){
 
 //--------------------------------------------------------
 
-void getBattery(uint8_t equal, uint8_t questMark){
+uint8_t getBattery(uint8_t equal, uint8_t questMark){
 
   // read address
   uint8_t address = 0;
-  for(uint8_t i = equal; i< lineFeed; i++){
-    address = readAddr(equal, questMark);
+  for(uint8_t i = equal; i< questMark; i++){
+    address = readAddress(equal, questMark);
   }
 
 
@@ -568,8 +596,8 @@ uint8_t getPowerLoRa(uint8_t equal, uint8_t questMark){
 
   //--- read address
   uint8_t address = 0;
-  for(uint8_t i = equal; i< lineFeed; i++){
-    address = readAddr(equal, questMark);
+  for(uint8_t i = equal; i< questMark; i++){
+    address = readAddress(equal, questMark);
   }
 
 
@@ -597,13 +625,13 @@ uint8_t getPowerLoRa(uint8_t equal, uint8_t questMark){
     // interrupt
     if(flagISR == 1){
       flagISR = 0;
-      setupTimer();
+      setupTimer(1000);
     }
 
 
     // LoRa response
     if(bufferLoRaAvailable()){
-      uint8_t typeCommand = typeCommandLoRa();
+      uint8_t typeCommand = 0;//typeCommandLoRa();
       
       if(typeCommand == GET_POWER_LORA){
         return readDataLoRa(GET_POWER_LORA);
@@ -620,7 +648,7 @@ uint8_t getPowerLoRa(uint8_t equal, uint8_t questMark){
 
 //--------------------------------------------------------
 
-uint8_t setTimer(uint16_t millis){
+uint8_t setupTimer(uint16_t millis){
   if(millis < 250){
     return 0;
   }
@@ -672,13 +700,13 @@ uint8_t wattingReponse(uint8_t commandSerial){
     // interrupt
     if(flagISR == 1){
       flagISR = 0;
-      setupTimer();
+      setupTimer(1000);
     }
 
 
     // LoRa response
     if(bufferLoRaAvailable()){
-      uint8_t typeCommand = typeCommandLoRa();
+      uint8_t typeCommand = 0;//typeCommandLoRa();
       
       if(typeCommand == GET_POWER_LORA){
         return readDataLoRa(GET_POWER_LORA);
@@ -716,3 +744,59 @@ uint8_t determineParameter(uint8_t index, uint8_t type, uint8_t equal, uint8_t l
   }
   
 }
+
+//----------------------------------------------------------
+
+void resetNode(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+void setFreqJoin(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+void setFreqAccept(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+void setPowerLoRa(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+void setDataRateLoRa(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+void setID(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+uint8_t getState(uint8_t equal, uint8_t questMark){
+  
+}
+
+
+//-----------------------------------------------------------
+void controlRole(uint8_t equal, uint8_t lineFeed){
+  
+}
+
+//-----------------------------------------------------------
+
+void LoRa_transmit(String messenger){
+  
+}
+
+uint8_t readDataLoRa(uint8_t command){
+  
+}
+
+//uint8_t bufferLoRaAvailable(){
+//  
+//}

@@ -1,0 +1,5 @@
+_ các ph?n ki?m tra b?n tin vi?t du?i d?ng so sài, s? dc làm l?i ? b?n c?u hình MAC
+_ Chua có giao ti?p Ethernet, chua hoàn thành ph?n luu các thông s? vào trong EEPROM
+_ Can bo xung hoàn thien ve giao thuc mang này
+_ file "AT_Command" chua duoc su dung trong chuong trình
+****** Chuong trình duoc viêt boi Newbie
