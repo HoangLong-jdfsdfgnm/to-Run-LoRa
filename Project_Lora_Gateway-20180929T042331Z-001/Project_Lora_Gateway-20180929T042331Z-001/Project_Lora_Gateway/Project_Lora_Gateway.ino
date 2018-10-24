@@ -4,11 +4,17 @@
 
 #include "RTC.h"
 #include "Recieve.h"
-#include "ethernet.h"
+#include "MQTT.h"
 #include "EEPROM.h"
 //#include <Wire.h> 
 
 /*************************************************/
+char mqttPublish[50];
+char mqttSubscribe[30];
+extern char payload[];
+unsigned int lengthPayload;
+byte haveMQTT = 0;
+
 int request = 0;
 int serialCommand = 0;
 byte LoraCommand = 0;
@@ -79,14 +85,35 @@ bool Flag_checkTime = 0;
 #define   ADDR_ROLE_2                 ADDR_ROLE_1 + 20
 #define   ADDR_ROLE_3                 ADDR_ROLE_2 +20
 
+#define   LORA_ENABLE                 digitalWrite(11, LOW)
+#define   LORA_DISABLE                digitalWrite(11, HIGH)
+
+#define   ETHERNET_ENABLE             digitalWrite(10, LOW)
+#define   ETHERNET_DISABLE            digitalWrite(10, HIGH)
+
+#define   DIR_INPUT                   digitalWrite(7, HIGH)
+#define   DIR_OUTPUT                  digitalWrite(7, LOW)
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(57600);
+  
   Wire.begin();
+  
   while (!Serial);
   Serial.println("LoRa Gateway");
+
+  pinMode(7, OUTPUT);
+  ETHERNET_ENABLE;
+  DIR_OUTPUT;
+  LORA_DISABLE;
+  setupMQTT();
+  LORA_ENABLE;
+  DIR_INPUT;
+  ETHERNET_DISABLE;
+  
   pinMode(2, INPUT_PULLUP);
   attachInterrupt(0, irqLoRa, RISING);
+  
   if (!LoRa.begin(436E6)) {
     Serial.println("Starting LoRa failed!");
     while (1);
@@ -95,6 +122,7 @@ void setup() {
   LoRa.setSpreadingFactor(10);
   LoRa.setSignalBandwidth(125E3);
   LoRa.setCodingRate4(8);
+  
   setTime(15, 00, 45, 1, 25, 9, 18);
   readDS1307();
   digitalClockDisplay();
@@ -137,7 +165,8 @@ void loop() {
     Flag_checkTime = 0;
 
   // ----->> Quan ly lenh PC
-  while(Serial.available() > 1){
+  while((Serial.available() > 1) || (haveMQTT == 1)){
+    
     serialCommand = readCommandSerial();
 
     // read Serial
@@ -151,12 +180,38 @@ void loop() {
     }
 
     // error
+//    Serial.print("serialCommand: ");
+//    Serial.println(serialCommand);
     if(serialCommand == -1){
       Serial.println("inval_parameter");
     }
-    
+
+    haveMQTT = 0;
   }
 
+  //---->> MQTT
+  
+  ETHERNET_ENABLE;
+  LORA_DISABLE;
+  DIR_OUTPUT;
+  if(subscribeMQTT("command")){
+    haveMQTT = 1;
+  }
+  else{
+    haveMQTT = 0;
+  }
+  DIR_INPUT;
+  ETHERNET_DISABLE;
+  LORA_ENABLE;
+//  Serial.print("haveMQTT: ");
+//    Serial.println(haveMQTT);
+  
+//  Serial.println("Delay: 3s");
+//  for(byte i = 0; i<20; i++){
+//    delay(1000);
+//    Serial.println(i+1);
+//  }
+//  Serial.println("het delay");
   
   // ---->> Quan ly lenh LoRa
   if(bufferLoRaAvailable()){
@@ -216,9 +271,10 @@ int8_t readCommandSerial(){
 */
 
   //--- read serial
-  uint8_t size =0;
+  uint8_t size = 0;
   while(Serial.available()){
     delay(100);
+    Serial.print("read Bufer");
     bufferSerial[size] = Serial.read();
 #ifdef DEBUG
     Serial.print(char(bufferSerial[size]));
@@ -226,7 +282,21 @@ int8_t readCommandSerial(){
     size ++;
   }
   
+  if(haveMQTT == 1){
+    size = lengthPayload;
+    lengthPayload = 0;
+  }
   
+#ifdef DEBUG
+//  Serial.print("haveMQTT: ");
+//  Serial.println(haveMQTT);
+//  Serial.print("size: ");
+//  Serial.println(size);
+//  for (int i=0;i<size;i++) {
+//    Serial.print((char)bufferSerial[i]);
+//  }
+#endif
+
   
   
   //--- determine equal
@@ -236,8 +306,6 @@ int8_t readCommandSerial(){
       equal = i;
     }
   }
-
-  
   
   // error equal
   if(equal < 3){
@@ -466,11 +534,11 @@ void managerAlarm(){
             break;
           case ALARM_ROLE_3:
               if(state == 0){
-                messenger += ";G:3;O!";
+                messenger += ";C:3;O!";
                 Serial.println("Role 3: OFF");
               }
               if(state == 1){
-                messenger += ";G:3;F!";
+                messenger += ";C:3;F!";
                 Serial.println("Role 3: ON");
               }
               
@@ -732,17 +800,35 @@ void processLoRaCommand(){
         }
         readDS1307();
         messenger += "*C ;Time:";
-        Serial.print(messenger);
-        Serial.print(hour);
-        Serial.print(", ");
-        Serial.print(minute);
-        Serial.print(", ");
-        Serial.print(day);
-        Serial.print(", ");
-        Serial.print(month);
-        Serial.print(", ");
-        Serial.print(year);
-        Serial.println("}");
+        messenger += hour;
+        messenger += ", ";
+        messenger += minute;
+        messenger += ", ";
+        messenger += day;
+        messenger += ", ";
+        messenger += month;
+        messenger += ", ";
+        messenger += year;
+        messenger += "}";
+
+        ETHERNET_ENABLE;
+        LORA_DISABLE;
+        DIR_OUTPUT;
+        publishMQTT(messenger);
+        DIR_INPUT;
+        ETHERNET_DISABLE;
+        LORA_ENABLE;
+        Serial.println(messenger);
+//        Serial.print(hour);
+//        Serial.print(", ");
+//        Serial.print(minute);
+//        Serial.print(", ");
+//        Serial.print(day);
+//        Serial.print(", ");
+//        Serial.print(month);
+//        Serial.print(", ");
+//        Serial.print(year);
+//        Serial.println("}");
       break;
       
     case 'L':
@@ -757,18 +843,36 @@ void processLoRaCommand(){
           }
         }
         readDS1307();
-        messenger += ";Time:";
-        Serial.print(messenger);
-        Serial.print(hour);
-        Serial.print(", ");
-        Serial.print(minute);
-        Serial.print(", ");
-        Serial.print(day);
-        Serial.print(", ");
-        Serial.print(month);
-        Serial.print(", ");
-        Serial.print(year);
-        Serial.println("}");
+        messenger += "Lux ;Time:";
+        messenger += hour;
+        messenger += ", ";
+        messenger += minute;
+        messenger += ", ";
+        messenger += day;
+        messenger += ", ";
+        messenger += month;
+        messenger += ", ";
+        messenger += year;
+        messenger += "}";
+
+        ETHERNET_ENABLE;
+        LORA_DISABLE;
+        DIR_OUTPUT;
+        publishMQTT(messenger);
+        DIR_INPUT;
+        ETHERNET_DISABLE;
+        LORA_ENABLE;
+        Serial.println(messenger);
+//        Serial.print(hour);
+//        Serial.print(", ");
+//        Serial.print(minute);
+//        Serial.print(", ");
+//        Serial.print(day);
+//        Serial.print(", ");
+//        Serial.print(month);
+//        Serial.print(", ");
+//        Serial.print(year);
+//        Serial.println("}");
       break;
       
     case 'H':
@@ -783,18 +887,37 @@ void processLoRaCommand(){
           }
         }
         readDS1307();
-        messenger += ";Time:";
-        Serial.print(messenger);
-        Serial.print(hour);
-        Serial.print(", ");
-        Serial.print(minute);
-        Serial.print(", ");
-        Serial.print(day);
-        Serial.print(", ");
-        Serial.print(month);
-        Serial.print(", ");
-        Serial.print(year);
-        Serial.println("}");
+        messenger += "%;Time:";
+        messenger += hour;
+        messenger += ", ";
+        messenger += minute;
+        messenger += ", ";
+        messenger += day;
+        messenger += ", ";
+        messenger += month;
+        messenger += ", ";
+        messenger += year;
+        messenger += "}";
+
+        ETHERNET_ENABLE;
+        LORA_DISABLE;
+        DIR_OUTPUT;
+        publishMQTT(messenger);
+        DIR_INPUT;
+        ETHERNET_DISABLE;
+        LORA_ENABLE;
+        Serial.println(messenger);
+//        Serial.print(messenger);
+//        Serial.print(hour);
+//        Serial.print(", ");
+//        Serial.print(minute);
+//        Serial.print(", ");
+//        Serial.print(day);
+//        Serial.print(", ");
+//        Serial.print(month);
+//        Serial.print(", ");
+//        Serial.print(year);
+//        Serial.println("}");
       break;
 
     case 'G':
